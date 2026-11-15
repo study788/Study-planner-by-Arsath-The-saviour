@@ -1,0 +1,359 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ── Global Catch-All Deny ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ── Global Primitives ──
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email_verified == true && request.auth.token.email == 'banusait2005@gmail.com') ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+    function isValidTimestamps(data) {
+      return data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // ── Schema Validators ──
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.email is string && data.email.size() <= 120 &&
+             data.studentClass is string && data.studentClass.size() <= 40 &&
+             data.parentName is string && data.parentName.size() <= 80 &&
+             data.contact is string && data.contact.size() <= 80 &&
+             data.exam in ['JEE', 'NEET'] &&
+             data.plan in ['1year', '2year'] &&
+             data.role in ['student', 'admin'] &&
+             data.active is bool &&
+             data.sessionsCount is int && data.sessionsCount >= 0 && data.sessionsCount <= 100000 &&
+             data.joinDate is string && data.joinDate.size() <= 40 &&
+             (!('darkMode' in data) || data.darkMode == null || data.darkMode is bool) &&
+             isValidTimestamps(data);
+    }
+
+    function isValidTestAttempt(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.exam in ['JEE', 'NEET'] &&
+             data.testType in ['daily', 'weekly', 'mock', 'custom', 'improvement'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.score is int && data.score >= 0 && data.score <= 1000 &&
+             data.total is int && data.total >= 1 && data.total <= 1000 &&
+             data.pct is int && data.pct >= 0 && data.pct <= 100 &&
+             data.grade is string && data.grade.size() >= 1 && data.grade.size() <= 10 &&
+             data.durationSeconds is int && data.durationSeconds >= 0 && data.durationSeconds <= 86400 &&
+             data.questions is list && data.questions.size() >= 1 && data.questions.size() <= 120 &&
+             data.dateLabel is string && data.dateLabel.size() >= 1 && data.dateLabel.size() <= 40 &&
+             isValidTimestamps(data);
+    }
+
+    function isValidStudyGoal(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 40 &&
+             data.priority in ['high', 'med', 'low'] &&
+             data.done is bool &&
+             isValidTimestamps(data);
+    }
+
+    function isValidStudyAlarm(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.time24 is string && data.time24.size() == 5 &&
+             data.label is string && data.label.size() >= 1 && data.label.size() <= 100 &&
+             data.active is bool &&
+             isValidTimestamps(data);
+    }
+
+    function isValidHomeworkSession(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.dateKey is string && data.dateKey.size() >= 8 && data.dateKey.size() <= 20 &&
+             data.exam in ['JEE', 'NEET'] &&
+             data.questionIds is list && data.questionIds.size() >= 1 && data.questionIds.size() <= 20 &&
+             (data.questionIds.size() == 0 || data.questionIds[0] is string) &&
+             data.answers is map && data.answers.size() <= 20 &&
+             data.completed is bool &&
+             data.pdfExported is bool &&
+             data.assignedAtMillis is int && data.assignedAtMillis > 0 &&
+             isValidTimestamps(data);
+    }
+
+    function isValidStudyProgress(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.masteredFlashcardIds is list && data.masteredFlashcardIds.size() <= 500 &&
+             (data.masteredFlashcardIds.size() == 0 || data.masteredFlashcardIds[0] is string) &&
+             data.missedQuestionIds is list && data.missedQuestionIds.size() <= 500 &&
+             (data.missedQuestionIds.size() == 0 || data.missedQuestionIds[0] is string) &&
+             data.completedChapters is list && data.completedChapters.size() <= 200 &&
+             (data.completedChapters.size() == 0 || data.completedChapters[0] is string) &&
+             data.sessionNotes is string && data.sessionNotes.size() <= 5000 &&
+             isValidTimestamps(data);
+    }
+
+    function isValidAdminMessage(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.senderUid is string && data.senderUid.size() >= 1 && data.senderUid.size() <= 128 &&
+             data.senderRole in ['student', 'admin'] &&
+             data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 80 &&
+             data.message is string && data.message.size() >= 1 && data.message.size() <= 1000 &&
+             data.timeLabel is string && data.timeLabel.size() <= 30 &&
+             isValidTimestamps(data);
+    }
+
+    function isValidCustomVideo(data) {
+      return data.isPublic is bool &&
+             data.exam in ['JEE', 'NEET'] &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 40 &&
+             data.chapter is string && data.chapter.size() >= 1 && data.chapter.size() <= 100 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.url is string && data.url.size() >= 8 && data.url.size() <= 300 &&
+             data.rating is number && data.rating >= 0 && data.rating <= 5 &&
+             data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+             isValidTimestamps(data);
+    }
+
+    function isValidCustomQuestion(data) {
+      return data.isPublic is bool &&
+             data.exam in ['JEE', 'NEET'] &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 40 &&
+             data.chapter is string && data.chapter.size() >= 1 && data.chapter.size() <= 100 &&
+             data.difficulty in ['Easy', 'Medium', 'Tough'] &&
+             data.questionText is string && data.questionText.size() >= 3 && data.questionText.size() <= 1200 &&
+             data.options is list && data.options.size() == 4 && data.options[0] is string &&
+             data.correctIndex is int && data.correctIndex >= 0 && data.correctIndex <= 3 &&
+             data.explanation is string && data.explanation.size() <= 1200 &&
+             data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+             isValidTimestamps(data);
+    }
+
+    function isValidScheduledClass(data) {
+      return data.isPublic is bool &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.exam in ['JEE', 'NEET', 'ALL'] &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 40 &&
+             data.scheduleTime is string && data.scheduleTime.size() >= 1 && data.scheduleTime.size() <= 60 &&
+             data.meetUrl is string && data.meetUrl.size() >= 8 && data.meetUrl.size() <= 300 &&
+             data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+             isValidTimestamps(data);
+    }
+
+    // ── Admins Collection ──
+    match /admins/{adminUid} {
+      allow get: if isValidId(adminUid) && (isOwner(adminUid) || isAdmin());
+      allow list: if isAdmin();
+      allow write: if false;
+    }
+
+    // ── Users & Scoped Subcollections ──
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().keys().hasAll(['userId', 'name', 'email', 'studentClass', 'parentName', 'contact', 'exam', 'plan', 'role', 'active', 'sessionsCount', 'joinDate', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'name', 'email', 'studentClass', 'parentName', 'contact', 'exam', 'plan', 'role', 'active', 'sessionsCount', 'joinDate', 'darkMode', 'createdAt', 'updatedAt']) &&
+                       ((isOwner(userId) && incoming().userId == request.auth.uid && incoming().role == 'student') || (isAdmin() && incoming().userId == userId));
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       (
+                         isAdmin() ||
+                         (
+                           isOwner(userId) &&
+                           incoming().role == existing().role &&
+                           incoming().active == existing().active &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['name', 'studentClass', 'parentName', 'contact', 'exam', 'plan', 'sessionsCount', 'darkMode', 'updatedAt'])
+                         )
+                       );
+      allow delete: if isValidId(userId) && isAdmin();
+
+      match /test_attempts/{attemptId} {
+        allow get: if isValidId(userId) && isValidId(attemptId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin());
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(attemptId) &&
+                         (isOwner(userId) || isAdmin()) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['userId', 'exam', 'testType', 'title', 'score', 'total', 'pct', 'grade', 'durationSeconds', 'questions', 'dateLabel', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'exam', 'testType', 'title', 'score', 'total', 'pct', 'grade', 'durationSeconds', 'questions', 'dateLabel', 'createdAt', 'updatedAt']) &&
+                         isValidTestAttempt(incoming());
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(attemptId) && (isOwner(userId) || isAdmin());
+      }
+
+      match /goals/{goalId} {
+        allow get: if isValidId(userId) && isValidId(goalId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin());
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(goalId) &&
+                         isOwner(userId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'title', 'subject', 'priority', 'done', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'subject', 'priority', 'done', 'createdAt', 'updatedAt']) &&
+                         isValidStudyGoal(incoming());
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(goalId) &&
+                         isValidStudyGoal(incoming()) &&
+                         isOwner(userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'subject', 'priority', 'done', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(goalId) && isOwner(userId);
+      }
+
+      match /alarms/{alarmId} {
+        allow get: if isValidId(userId) && isValidId(alarmId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(alarmId) &&
+                         isOwner(userId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'time24', 'label', 'active', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'time24', 'label', 'active', 'createdAt', 'updatedAt']) &&
+                         isValidStudyAlarm(incoming());
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(alarmId) &&
+                         isValidStudyAlarm(incoming()) &&
+                         isOwner(userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['time24', 'label', 'active', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(alarmId) && isOwner(userId);
+      }
+
+      match /homework_sessions/{homeworkId} {
+        allow get: if isValidId(userId) && isValidId(homeworkId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin());
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(homeworkId) &&
+                         isOwner(userId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'dateKey', 'exam', 'questionIds', 'answers', 'completed', 'pdfExported', 'assignedAtMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'dateKey', 'exam', 'questionIds', 'answers', 'completed', 'pdfExported', 'assignedAtMillis', 'createdAt', 'updatedAt']) &&
+                         isValidHomeworkSession(incoming());
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(homeworkId) &&
+                         isValidHomeworkSession(incoming()) &&
+                         isOwner(userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().dateKey == existing().dateKey &&
+                         incoming().assignedAtMillis == existing().assignedAtMillis &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['answers', 'completed', 'pdfExported', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(homeworkId) && isOwner(userId);
+      }
+
+      match /study_progress/{progressId} {
+        allow get: if isValidId(userId) && isValidId(progressId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin());
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(progressId) &&
+                         isOwner(userId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'masteredFlashcardIds', 'missedQuestionIds', 'completedChapters', 'sessionNotes', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'masteredFlashcardIds', 'missedQuestionIds', 'completedChapters', 'sessionNotes', 'createdAt', 'updatedAt']) &&
+                         isValidStudyProgress(incoming());
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(progressId) &&
+                         isValidStudyProgress(incoming()) &&
+                         isOwner(userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['masteredFlashcardIds', 'missedQuestionIds', 'completedChapters', 'sessionNotes', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(progressId) && isOwner(userId);
+      }
+
+      match /admin_messages/{messageId} {
+        allow get: if isValidId(userId) && isValidId(messageId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin());
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(messageId) &&
+                         incoming().userId == userId &&
+                         incoming().senderUid == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'senderUid', 'senderRole', 'senderName', 'message', 'timeLabel', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'senderUid', 'senderRole', 'senderName', 'message', 'timeLabel', 'createdAt', 'updatedAt']) &&
+                         isValidAdminMessage(incoming()) &&
+                         ((isOwner(userId) && incoming().senderRole == 'student') || (isAdmin() && incoming().senderRole == 'admin'));
+        allow update, delete: if false;
+      }
+    }
+
+    // ── Admin-Published Shared Educational Content ──
+    match /custom_videos/{videoId} {
+      allow get: if isSignedIn() && isValidId(videoId) && (existing().isPublic == true || isAdmin());
+      allow list: if isSignedIn() && resource.data.isPublic == true;
+      allow create: if isAdmin() &&
+                       isValidId(videoId) &&
+                       incoming().authorUid == request.auth.uid &&
+                       incoming().keys().hasAll(['isPublic', 'exam', 'subject', 'chapter', 'title', 'url', 'rating', 'authorUid', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['isPublic', 'exam', 'subject', 'chapter', 'title', 'url', 'rating', 'authorUid', 'createdAt', 'updatedAt']) &&
+                       isValidCustomVideo(incoming());
+      allow update: if isAdmin() &&
+                       isValidId(videoId) &&
+                       isValidCustomVideo(incoming()) &&
+                       incoming().authorUid == existing().authorUid &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['isPublic', 'exam', 'subject', 'chapter', 'title', 'url', 'rating', 'updatedAt']);
+      allow delete: if isValidId(videoId) && isAdmin();
+    }
+
+    match /custom_questions/{questionId} {
+      allow get: if isSignedIn() && isValidId(questionId) && (existing().isPublic == true || isAdmin());
+      allow list: if isSignedIn() && resource.data.isPublic == true;
+      allow create: if isAdmin() &&
+                       isValidId(questionId) &&
+                       incoming().authorUid == request.auth.uid &&
+                       incoming().keys().hasAll(['isPublic', 'exam', 'subject', 'chapter', 'difficulty', 'questionText', 'options', 'correctIndex', 'explanation', 'authorUid', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['isPublic', 'exam', 'subject', 'chapter', 'difficulty', 'questionText', 'options', 'correctIndex', 'explanation', 'authorUid', 'createdAt', 'updatedAt']) &&
+                       isValidCustomQuestion(incoming());
+      allow update: if isAdmin() &&
+                       isValidId(questionId) &&
+                       isValidCustomQuestion(incoming()) &&
+                       incoming().authorUid == existing().authorUid &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['isPublic', 'exam', 'subject', 'chapter', 'difficulty', 'questionText', 'options', 'correctIndex', 'explanation', 'updatedAt']);
+      allow delete: if isValidId(questionId) && isAdmin();
+    }
+
+    match /scheduled_classes/{classId} {
+      allow get: if isSignedIn() && isValidId(classId) && (existing().isPublic == true || isAdmin());
+      allow list: if isSignedIn() && resource.data.isPublic == true;
+      allow create: if isAdmin() &&
+                       isValidId(classId) &&
+                       incoming().authorUid == request.auth.uid &&
+                       incoming().keys().hasAll(['isPublic', 'title', 'exam', 'subject', 'scheduleTime', 'meetUrl', 'authorUid', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['isPublic', 'title', 'exam', 'subject', 'scheduleTime', 'meetUrl', 'authorUid', 'createdAt', 'updatedAt']) &&
+                       isValidScheduledClass(incoming());
+      allow update: if isAdmin() &&
+                       isValidId(classId) &&
+                       isValidScheduledClass(incoming()) &&
+                       incoming().authorUid == existing().authorUid &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['isPublic', 'title', 'exam', 'subject', 'scheduleTime', 'meetUrl', 'updatedAt']);
+      allow delete: if isValidId(classId) && isAdmin();
+    }
+  }
+}

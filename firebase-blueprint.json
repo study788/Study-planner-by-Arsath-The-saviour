@@ -1,0 +1,238 @@
+{
+  "entities": {
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrator lookup entry keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID of the administrator." },
+        "email": { "type": "string", "description": "Verified administrator email." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Student or admin profile, selected target exam, plan, and study session stats.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID owning this profile." },
+        "name": { "type": "string", "description": "Student full name." },
+        "email": { "type": "string", "description": "Authenticated user email." },
+        "studentClass": { "type": "string", "description": "Class 11, Class 12, or Dropper (Repeater)." },
+        "parentName": { "type": "string", "description": "Parent or guardian name." },
+        "contact": { "type": "string", "description": "Phone or email contact for reminders." },
+        "exam": { "type": "string", "enum": ["JEE", "NEET"], "description": "Target entrance exam." },
+        "plan": { "type": "string", "enum": ["1year", "2year"], "description": "Preparation duration plan." },
+        "role": { "type": "string", "enum": ["student", "admin"], "description": "Account role." },
+        "active": { "type": "boolean", "description": "Whether student profile is active." },
+        "sessionsCount": { "type": "integer", "description": "Completed focus timer sessions." },
+        "joinDate": { "type": "string", "description": "Formatted registration date." },
+        "darkMode": { "type": "boolean", "description": "Optional preferred theme mode." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp submitted via FieldValue.serverTimestamp()." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp submitted via FieldValue.serverTimestamp()." }
+      },
+      "required": ["userId", "name", "email", "studentClass", "parentName", "contact", "exam", "plan", "role", "active", "sessionsCount", "joinDate", "createdAt", "updatedAt"]
+    },
+    "TestAttempt": {
+      "title": "TestAttempt",
+      "description": "Completed exam-side test or practice session preserving every question, user choice, and score.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "exam": { "type": "string", "enum": ["JEE", "NEET"] },
+        "testType": { "type": "string", "enum": ["daily", "weekly", "mock", "custom", "improvement"] },
+        "title": { "type": "string" },
+        "score": { "type": "integer" },
+        "total": { "type": "integer" },
+        "pct": { "type": "integer" },
+        "grade": { "type": "string" },
+        "durationSeconds": { "type": "integer" },
+        "questions": { "type": "array", "description": "Bounded list of exam question snapshots and student answers." },
+        "dateLabel": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp submitted via FieldValue.serverTimestamp()." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp submitted via FieldValue.serverTimestamp()." }
+      },
+      "required": ["userId", "exam", "testType", "title", "score", "total", "pct", "grade", "durationSeconds", "questions", "dateLabel", "createdAt", "updatedAt"]
+    },
+    "StudyGoal": {
+      "title": "StudyGoal",
+      "description": "Weekly study target for a student.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "subject": { "type": "string" },
+        "priority": { "type": "string", "enum": ["high", "med", "low"] },
+        "done": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "subject", "priority", "done", "createdAt", "updatedAt"]
+    },
+    "StudyAlarm": {
+      "title": "StudyAlarm",
+      "description": "Scheduled study alarm reminder.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "time24": { "type": "string" },
+        "label": { "type": "string" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "time24", "label", "active", "createdAt", "updatedAt"]
+    },
+    "HomeworkSession": {
+      "title": "HomeworkSession",
+      "description": "Daily tough competitive PPT homework assignment tracking 2-hour delay before Answer PDF unlock.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dateKey": { "type": "string" },
+        "exam": { "type": "string", "enum": ["JEE", "NEET"] },
+        "questionIds": { "type": "array" },
+        "answers": { "type": "object" },
+        "completed": { "type": "boolean" },
+        "pdfExported": { "type": "boolean" },
+        "assignedAtMillis": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateKey", "exam", "questionIds", "answers", "completed", "pdfExported", "assignedAtMillis", "createdAt", "updatedAt"]
+    },
+    "StudyProgress": {
+      "title": "StudyProgress",
+      "description": "Mastered flashcards, missed questions for improvement practice, completed chapters, and session notes.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "masteredFlashcardIds": { "type": "array" },
+        "missedQuestionIds": { "type": "array" },
+        "completedChapters": { "type": "array" },
+        "sessionNotes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "masteredFlashcardIds", "missedQuestionIds", "completedChapters", "sessionNotes", "createdAt", "updatedAt"]
+    },
+    "AdminMessage": {
+      "title": "AdminMessage",
+      "description": "Chat message between a student and Admin Arsath.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "senderUid": { "type": "string" },
+        "senderRole": { "type": "string", "enum": ["student", "admin"] },
+        "senderName": { "type": "string" },
+        "message": { "type": "string" },
+        "timeLabel": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "senderUid", "senderRole", "senderName", "message", "timeLabel", "createdAt", "updatedAt"]
+    },
+    "CustomVideo": {
+      "title": "CustomVideo",
+      "description": "Curated chapter video added by Coaching Centre admin.",
+      "type": "object",
+      "properties": {
+        "isPublic": { "type": "boolean" },
+        "exam": { "type": "string", "enum": ["JEE", "NEET"] },
+        "subject": { "type": "string" },
+        "chapter": { "type": "string" },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "rating": { "type": "number" },
+        "authorUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["isPublic", "exam", "subject", "chapter", "title", "url", "rating", "authorUid", "createdAt", "updatedAt"]
+    },
+    "CustomQuestion": {
+      "title": "CustomQuestion",
+      "description": "Custom competitive question published by Coaching Centre admin.",
+      "type": "object",
+      "properties": {
+        "isPublic": { "type": "boolean" },
+        "exam": { "type": "string", "enum": ["JEE", "NEET"] },
+        "subject": { "type": "string" },
+        "chapter": { "type": "string" },
+        "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Tough"] },
+        "questionText": { "type": "string" },
+        "options": { "type": "array" },
+        "correctIndex": { "type": "integer" },
+        "explanation": { "type": "string" },
+        "authorUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["isPublic", "exam", "subject", "chapter", "difficulty", "questionText", "options", "correctIndex", "explanation", "authorUid", "createdAt", "updatedAt"]
+    },
+    "ScheduledClass": {
+      "title": "ScheduledClass",
+      "description": "Live Google Meet class scheduled by Coaching Centre admin.",
+      "type": "object",
+      "properties": {
+        "isPublic": { "type": "boolean" },
+        "title": { "type": "string" },
+        "exam": { "type": "string", "enum": ["JEE", "NEET", "ALL"] },
+        "subject": { "type": "string" },
+        "scheduleTime": { "type": "string" },
+        "meetUrl": { "type": "string" },
+        "authorUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["isPublic", "title", "exam", "subject", "scheduleTime", "meetUrl", "authorUid", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Trusted administrator lookup collection."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Student and admin profile records."
+    },
+    "/users/{userId}/test_attempts/{attemptId}": {
+      "schema": { "$ref": "#/entities/TestAttempt" },
+      "description": "Preserved exam-side tests and full question/answer records."
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": { "$ref": "#/entities/StudyGoal" },
+      "description": "Student weekly goals."
+    },
+    "/users/{userId}/alarms/{alarmId}": {
+      "schema": { "$ref": "#/entities/StudyAlarm" },
+      "description": "Student study alarms."
+    },
+    "/users/{userId}/homework_sessions/{homeworkId}": {
+      "schema": { "$ref": "#/entities/HomeworkSession" },
+      "description": "Daily tough competitive homework sessions with 2-hour Answer PDF timer."
+    },
+    "/users/{userId}/study_progress/{progressId}": {
+      "schema": { "$ref": "#/entities/StudyProgress" },
+      "description": "Student flashcards mastery, improvement queue, and notes."
+    },
+    "/users/{userId}/admin_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/AdminMessage" },
+      "description": "Direct messages between student and Admin Arsath."
+    },
+    "/custom_videos/{videoId}": {
+      "schema": { "$ref": "#/entities/CustomVideo" },
+      "description": "Admin-curated chapter video resources."
+    },
+    "/custom_questions/{questionId}": {
+      "schema": { "$ref": "#/entities/CustomQuestion" },
+      "description": "Admin-authored competitive questions."
+    },
+    "/scheduled_classes/{classId}": {
+      "schema": { "$ref": "#/entities/ScheduledClass" },
+      "description": "Admin-scheduled live Google Meet sessions."
+    }
+  }
+}

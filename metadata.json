@@ -1,0 +1,6 @@
+{
+  "name": "Study Planner",
+  "description": "JEE & NEET preparation platform by Arsath Coaching Centre featuring persistent cloud sync, 1000+ subject questions, chapter videos, mindmaps, flashcards, PPT daily homework with 2-hour Answer PDF, and AI tutor.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
